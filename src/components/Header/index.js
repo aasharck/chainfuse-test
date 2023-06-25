@@ -1,20 +1,42 @@
 import React, { useEffect, useState } from 'react';
 // reactstrap components
 import { Row, Col } from 'reactstrap';
-import { Link} from 'react-router-dom';
-
+import { Link } from 'react-router-dom';
+import { ethers } from 'ethers';
 
 import './index.scss';
 function HomePage() {
-
   const [isConnected, setIsConnected] = useState(false);
+  const [accounts, setAccounts] = useState([])
+  const [isSigned, setIsSigned] = useState(false);
 
   useEffect(() => {
     // Check if Metamask is installed
     if (typeof window.ethereum == 'undefined') {
-      alert("No Metamask!")
+      alert('No Metamask!');
+    } else {
+      checkIfWalletIsConnected();
     }
   }, []);
+
+  const checkIfWalletIsConnected = async () => {
+    const { ethereum } = window;
+
+    try {
+      if (!ethereum) {
+        alert('Please install Metamask');
+      }
+      const accounts = await ethereum.request({ method: 'eth_accounts' });
+      setAccounts(accounts)
+      if (accounts.length !== 0) {
+        setIsConnected(true);
+      } else {
+        console.log('No Accounts found');
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   const connectWallet = async () => {
     try {
@@ -26,13 +48,29 @@ function HomePage() {
     }
   };
 
+  const signWithMetamask = async () =>{
+    const { ethereum } = window;
+    const provider = new ethers.BrowserProvider(ethereum)
+    const signer = await provider.getSigner();
+    let message = "Hello, Chainfuse"
+    let signature = await signer.signMessage(message);
+
+    let address = ethers.verifyMessage(message, signature);
+    
+    if(address.toLowerCase() === accounts[0].toLowerCase()){
+      console.log("successfully connected")
+      setIsSigned(true)
+    }
+
+  }
+
   return (
     <Row className="padding-32">
       <Col xs="4" className="">
         {' '}
         <img src={require('assets/img/logo.png')} />{' '}
       </Col>
-      <Col xs="4" className="logo" >
+      <Col xs="4" className="logo">
         <Link to="/" className="margin-12">
           HOME
         </Link>{' '}
@@ -45,10 +83,11 @@ function HomePage() {
           LOGIN
         </Link>
       </Col>
-      <Col xs="4" className="logo" >
-        <a className="margin-12" onClick={connectWallet}>
-          {isConnected ? 'Connected' : 'Connect Wallet'}
-        </a>
+      <Col xs="4" className="logo">
+        {!isConnected ? <a className="margin-12" onClick={connectWallet}>
+          Connect Wallet
+        </a> : (!isSigned ? <a className="margin-12" onClick={signWithMetamask}>Sign with Metamask</a> : <a className="margin-12">Connected</a>)
+         }
       </Col>
     </Row>
   );
